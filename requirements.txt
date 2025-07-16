@@ -1,0 +1,12 @@
+python-docx>=0.8.11    # Word文档处理
+paddleocr>=2.6.0       # PDF文档处理与OCR
+tqdm>=4.64.1           # 进度条显示
+sumy>=0.11.0           # 文本摘要生成
+keybert>=0.7.0         # 基于BERT的关键词提取
+jieba>=0.42.1          # 中文分词
+numpy>=1.22.0          # 数值计算
+scikit-learn>=1.0.2    # 机器学习工具
+torch>=1.13.0          # 深度学习框架
+transformers>=4.25.0   # Transformer模型库
+sentence-transformers>=2.2.2  # 句向量编码
+pathlib>=1.0.1         # 路径处理
