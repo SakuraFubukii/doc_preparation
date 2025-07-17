@@ -2,7 +2,6 @@
 Word文档转换器模块
 
 此模块提供Word文档(.docx)转换为Markdown文件的功能。
-支持处理文本、表格和图像内容，并能提取文档元数据。
 """
 
 import json
@@ -33,15 +32,7 @@ def extract_table_data(table):
     return headers, data_rows
 
 def process_paragraph(para, pending_short_text):
-    """处理段落文本
-    
-    Args:
-        para: Word文档段落对象
-        pending_short_text: 待处理的短文本列表
-        
-    Returns:
-        tuple: (处理后的文本内容, 更新后的短文本列表)
-    """
+    """处理段落文本"""
     text = para.text.strip()
     
     # 处理标题
@@ -64,18 +55,8 @@ def process_paragraph(para, pending_short_text):
 
 
 def convert_docx_to_markdown(docx_path, output_folder):
-    """将Word文档转换为Markdown格式
-    
-    Args:
-        docx_path: Word文档的路径
-        output_folder: 输出目录路径
-    
-    Returns:
-        tuple: (Markdown内容, 表格数据列表, 元数据字典)
-    """
-    # 确保参数是Path对象
-    docx_path = Path(docx_path)
-    output_folder = Path(output_folder)
+    """将Word文档转换为Markdown格式"""
+    docx_path, output_folder = Path(docx_path), Path(output_folder)
     
     try:
         doc = Document(docx_path)
@@ -87,8 +68,6 @@ def convert_docx_to_markdown(docx_path, output_folder):
     md_lines = [f"# {title}\n\n"]
     tables_data = []
     pending_short_text = []
-    
-    # 提取元数据
     metadata = extract_metadata(doc)
     
     for element in doc.element.body:
@@ -130,18 +109,8 @@ def convert_docx_to_markdown(docx_path, output_folder):
     return clean_markdown("".join(md_lines)), tables_data, metadata
 
 def process_single_docx(input_path, output_folder):
-    """处理单个Word文档
-    
-    Args:
-        input_path: Word文档的路径
-        output_folder: 输出目录路径
-        
-    Returns:
-        bool: 处理成功返回True，否则返回False
-    """
-    # 确保参数是Path对象
-    input_path = Path(input_path)
-    output_folder = Path(output_folder)
+    """处理单个Word文档"""
+    input_path, output_folder = Path(input_path), Path(output_folder)
     
     if is_temp_file(input_path):
         print(f"⚠️ 跳过临时文件: {input_path.name}")
@@ -153,40 +122,24 @@ def process_single_docx(input_path, output_folder):
     try:
         md_content, tables_data, metadata = convert_docx_to_markdown(input_path, output_subfolder)
         
-        # 保存Markdown文件
+        # 保存文件
         (output_subfolder / f"{base_name}.md").write_text(md_content, encoding='utf-8')
-        
-        # 保存元数据
         write_json_file(metadata, output_subfolder / f"{base_name}_metadata.json")
         
-        # 保存表格数据
         if tables_data:
             write_json_file(tables_data, output_subfolder / f"{base_name}_tables.json")
         
-        print(f"✅ 成功转换: {Path(input_path).name}")
+        print(f"✅ 成功转换: {input_path.name}")
         print(f"  输出目录: {output_subfolder}")
         return True
     except Exception as e:
-        print(f"❌ 处理失败: {Path(input_path).name} - {str(e)}")
+        print(f"❌ 处理失败: {input_path.name} - {str(e)}")
         return False
 
 def convert_batch(input_folder, output_folder, file_extensions=None):
-    """批量转换Word文档
-    
-    Args:
-        input_folder: 输入目录路径
-        output_folder: 输出目录路径
-        file_extensions: 支持的文件扩展名列表，默认为['.docx', '.doc']
-        
-    Returns:
-        tuple: (成功数量, 总数量)
-    """
-    if file_extensions is None:
-        file_extensions = ['.docx', '.doc']
-    
-    # 确保参数是Path对象
-    input_path = Path(input_folder)
-    output_folder = Path(output_folder)
+    """批量转换Word文档"""
+    file_extensions = file_extensions or ['.docx', '.doc']
+    input_path, output_folder = Path(input_folder), Path(output_folder)
     
     if not input_path.exists():
         print(f"错误: 输入文件夹 '{input_path}' 不存在")
