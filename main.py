@@ -107,59 +107,76 @@ def main():
     4. 批量处理Word和PDF文档
     5. 汇总处理结果
     """
-    input_dir = config.INPUT_DIR
-    output_dir = config.OUTPUT_DIR
-    
-    # 确保输入输出目录存在
-    input_path = Path(input_dir)
-    if not input_path.exists():
-        print(f"错误: 输入目录不存在 - {input_dir}")
-        return
-    
-    ensure_dir(output_dir)
-    
-    # 检查元数据提取相关模型
     try:
-        from core.metadata_extractor import check_model_exists
-        check_model_exists()
+        input_dir = config.INPUT_DIR
+        output_dir = config.OUTPUT_DIR
+        
+        # 确保输入输出目录存在
+        input_path = Path(input_dir)
+        if not input_path.exists():
+            print(f"错误: 输入目录不存在 - {input_dir}")
+            return
+        
+        ensure_dir(output_dir)
+        
+        # 检查元数据提取相关模型
+        try:
+            from core.metadata_extractor import check_model_exists
+            check_model_exists()
+        except Exception as e:
+            print(f"模型检查失败: {str(e)}")
+            print("程序将继续运行，但元数据提取功能可能受限")
+
+        # 定义支持的文件扩展名
+        word_extensions = ('.docx', '.doc')
+        pdf_extensions = ('.pdf', '.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff')
+        
+        # 获取所有文件
+        word_files = [f for ext in word_extensions for f in input_path.glob(f"**/*{ext}")]
+        pdf_files = [f for ext in pdf_extensions for f in input_path.glob(f"**/*{ext}")]
+        all_files = word_files + pdf_files
+        
+        if not all_files:
+            print(f"在 {input_dir} 中没有找到支持的文档文件")
+            return
+        
+        print(f"找到 {len(all_files)} 个文件 (Word: {len(word_files)}, PDF及图片: {len(pdf_files)})，开始处理...")
+        success_count = 0
+        
+        # 处理Word文件
+        if word_files:
+            print("\n--- 开始处理Word文件 ---")
+            for file_path in tqdm(word_files, desc="处理Word文件"):
+                if process_file(file_path, output_dir):
+                    success_count += 1
+
+        # 处理PDF和图片文件
+        if pdf_files:
+            print("\n--- 开始处理PDF及图片文件 ---")
+            from core.converters.pdf_converter import process_directory
+            pdf_success_count, _ = process_directory(input_dir, output_dir)
+            success_count += pdf_success_count
+
+        print("\n" + "=" * 50)
+        print(f"处理完成! 成功: {success_count}/{len(all_files)}")
+        print(f"输出目录: {Path(output_dir).absolute()}")
+        print("=" * 50)
+        
     except Exception as e:
-        print(f"模型检查失败: {str(e)}")
-        print("程序将继续运行，但元数据提取功能可能受限")
-
-    # 定义支持的文件扩展名
-    word_extensions = ('.docx', '.doc')
-    pdf_extensions = ('.pdf', '.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff')
-    
-    # 获取所有文件
-    word_files = [f for ext in word_extensions for f in input_path.glob(f"**/*{ext}")]
-    pdf_files = [f for ext in pdf_extensions for f in input_path.glob(f"**/*{ext}")]
-    all_files = word_files + pdf_files
-    
-    if not all_files:
-        print(f"在 {input_dir} 中没有找到支持的文档文件")
-        return
-    
-    print(f"找到 {len(all_files)} 个文件 (Word: {len(word_files)}, PDF及图片: {len(pdf_files)})，开始处理...")
-    success_count = 0
-    
-    # 处理Word文件
-    if word_files:
-        print("\n--- 开始处理Word文件 ---")
-        for file_path in tqdm(word_files, desc="处理Word文件"):
-            if process_file(file_path, output_dir):
-                success_count += 1
-
-    # 处理PDF和图片文件
-    if pdf_files:
-        print("\n--- 开始处理PDF及图片文件 ---")
-        from core.converters.pdf_converter import process_directory
-        pdf_success_count, _ = process_directory(input_dir, output_dir)
-        success_count += pdf_success_count
-
-    print("\n" + "=" * 50)
-    print(f"处理完成! 成功: {success_count}/{len(all_files)}")
-    print(f"输出目录: {Path(output_dir).absolute()}")
-    print("=" * 50)
+        print(f"程序执行过程中出现错误: {str(e)}")
+    finally:
+        # 清理全局资源
+        try:
+            print("正在清理系统资源...")
+            from core.converters.pdf_converter import cleanup_resources
+            cleanup_resources()
+            
+            # 强制垃圾回收
+            import gc
+            gc.collect()
+            print("系统资源清理完成")
+        except Exception as e:
+            print(f"清理资源时出错: {str(e)}")
 
 
 if __name__ == "__main__":

@@ -11,8 +11,8 @@ from .docx_converter import convert_docx_to_markdown, process_single_docx
 def get_pdf_pipeline():
     """获取PDF处理管道"""
     try:
-        from .pdf_converter import pipeline
-        return pipeline
+        from .pdf_converter import get_pipeline
+        return get_pipeline()
     except Exception as e:
         print(f"无法加载PDF处理模型: {str(e)}")
         return None

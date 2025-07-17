@@ -7,17 +7,38 @@ PDF文档转换器模块
 import time
 import json
 from pathlib import Path
-from paddleocr import PPStructureV3
 import os
 import shutil
 import config
+import gc
+import atexit
 
-# 初始化PaddleOCR
-device = 'gpu' if config.USE_GPU_FOR_OCR else 'cpu'
-pipeline = PPStructureV3(device=device)
-print("OCR模型加载完成")
+# 全局变量存储pipeline实例
+_pipeline = None
+_pipeline_initialized = False
 
 supported_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff']
+
+def get_pipeline():
+    """获取或初始化PaddleOCR pipeline"""
+    global _pipeline, _pipeline_initialized
+    
+    if not _pipeline_initialized:
+        try:
+            from paddleocr import PPStructureV3
+            device = 'gpu' if config.USE_GPU_FOR_OCR else 'cpu'
+            _pipeline = PPStructureV3(device=device)
+            _pipeline_initialized = True
+            print("OCR模型加载完成")
+            
+            # 注册程序退出时的清理函数
+            atexit.register(cleanup_resources)
+        except Exception as e:
+            print(f"初始化OCR模型失败: {str(e)}")
+            _pipeline = None
+            _pipeline_initialized = True
+    
+    return _pipeline
 
 def process_document(input_file, output_root):
     file_path = Path(input_file)
@@ -37,6 +58,11 @@ def process_document(input_file, output_root):
         output_folder.mkdir(parents=True, exist_ok=True)
         img_folder = output_folder / "imgs"
         img_folder.mkdir(exist_ok=True, parents=True)
+
+        # 获取pipeline实例
+        pipeline = get_pipeline()
+        if pipeline is None:
+            raise RuntimeError("OCR模型未能正确初始化")
 
         # 处理文件
         output = pipeline.predict(str(file_path))
@@ -128,7 +154,64 @@ def process_directory(input_root, output_root):
             
     return processed_files, total_files
 
+def cleanup_resources():
+    """
+    清理PaddleOCR相关资源，防止内存泄漏
+    此函数应在程序结束前调用，以确保所有资源被正确释放
+    """
+    global _pipeline, _pipeline_initialized
+    
+    try:
+        if _pipeline is not None:
+            print("正在清理OCR资源...")
+            
+            # 尝试各种可能的清理方法
+            cleanup_methods = ['cleanup', 'close', 'release', '__del__']
+            for method_name in cleanup_methods:
+                if hasattr(_pipeline, method_name):
+                    try:
+                        method = getattr(_pipeline, method_name)
+                        if callable(method):
+                            method()
+                            print(f"  - 调用了 {method_name} 方法")
+                            break
+                    except Exception as e:
+                        print(f"  - 调用 {method_name} 失败: {str(e)}")
+                        continue
+            
+            # 清理可能的内部属性
+            if hasattr(_pipeline, '__dict__'):
+                for attr_name in list(_pipeline.__dict__.keys()):
+                    try:
+                        delattr(_pipeline, attr_name)
+                    except:
+                        pass
+            
+            # 设置为None
+            _pipeline = None
+            _pipeline_initialized = False
+            
+            # 强制垃圾回收
+            gc.collect()
+            
+            print("OCR资源清理完成")
+    except Exception as e:
+        print(f"清理OCR资源时出错: {str(e)}")
+    
+    # 额外的清理步骤 - 尝试清理PaddlePaddle相关资源
+    try:
+        import paddle
+        if hasattr(paddle, 'device') and hasattr(paddle.device, 'cuda'):
+            if paddle.device.cuda.device_count() > 0:
+                paddle.device.cuda.empty_cache()
+                print("已清理CUDA缓存")
+    except Exception as e:
+        pass  # 忽略paddle相关的清理错误
+        
 if __name__ == "__main__":
     input_root = r"E:\Document\petrochina\知识问答工作流平台\doc_preparation\input"
     output_root = r"E:\Document\petrochina\知识问答工作流平台\doc_preparation\output"
-    process_directory(input_root, output_root)
+    try:
+        process_directory(input_root, output_root)
+    finally:
+        cleanup_resources()
