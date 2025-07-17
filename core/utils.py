@@ -5,7 +5,7 @@
 """
 
 import re
-import config
+import json
 from pathlib import Path
 
 def clean_markdown(text):
@@ -89,8 +89,6 @@ def generate_safe_filename(text, max_length=100):
 
 def write_json_file(data, file_path, ensure_ascii=False, indent=2):
     """将数据写入JSON文件"""
-    import json
-    
     try:
         ensure_dir(Path(file_path).parent)
         with open(file_path, 'w', encoding='utf-8') as f:
@@ -131,3 +129,89 @@ def save_markdown_and_metadata(markdown_content, metadata, output_path):
         return md_file, meta_file
     else:
         return md_file, None
+
+
+def extract_tables_from_markdown_and_save_json(md_file_path, output_folder=None):
+    """从Markdown文件中提取表格并保存为JSON格式的txt文件
+    
+    Args:
+        md_file_path (str|Path): Markdown文件路径
+        output_folder (str|Path, optional): 输出文件夹，默认为md文件所在目录
+    
+    Returns:
+        list: 生成的表格JSON文件路径列表
+    """
+    md_file_path = Path(md_file_path)
+    if output_folder is None:
+        output_folder = md_file_path.parent
+    else:
+        output_folder = Path(output_folder)
+    
+    # 读取Markdown文件
+    try:
+        with open(md_file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except Exception as e:
+        print(f"读取Markdown文件失败: {str(e)}")
+        return []
+    
+    # 使用正则表达式匹配表格
+    table_pattern = r'\|.*\|(?:\n\|.*\|)*'
+    tables = re.findall(table_pattern, content, re.MULTILINE)
+    
+    generated_files = []
+    file_base_name = md_file_path.stem
+    
+    for i, table_text in enumerate(tables):
+        if not table_text.strip():
+            continue
+            
+        # 解析表格
+        lines = [line.strip() for line in table_text.split('\n') if line.strip()]
+        if not lines:
+            continue
+        
+        # 提取表头和数据
+        headers = []
+        data_rows = []
+        
+        for j, line in enumerate(lines):
+            # 清理表格行，移除首尾的|符号
+            cells = [cell.strip() for cell in line.split('|')[1:-1]]
+            
+            if j == 0:
+                headers = cells
+            else:
+                # 跳过分隔行（通常包含 --- 这样的内容）
+                if all(cell.replace('-', '').replace(' ', '') == '' for cell in cells):
+                    continue
+                    
+                if cells and len(cells) > 0:
+                    row_data = {}
+                    for k, cell in enumerate(cells):
+                        key = headers[k] if k < len(headers) else f"列{k+1}"
+                        row_data[key] = cell
+                    if any(value.strip() for value in row_data.values()):  # 确保行不为空
+                        data_rows.append(row_data)
+        
+        # 只有当表格有有效数据时才保存
+        if headers and data_rows:
+            table_data = {
+                "headers": headers,
+                "data": data_rows
+            }
+            
+            # 生成文件名
+            table_filename = f"{file_base_name}_table_{i + 1}.txt"
+            table_file_path = output_folder / table_filename
+            
+            # 保存为JSON格式的txt文件
+            try:
+                with open(table_file_path, 'w', encoding='utf-8') as f:
+                    json.dump(table_data, f, ensure_ascii=False, indent=2)
+                print(f"  - 已生成表格文件: {table_filename}")
+                generated_files.append(table_file_path)
+            except Exception as e:
+                print(f"  - 保存表格文件失败: {str(e)}")
+    
+    return generated_files

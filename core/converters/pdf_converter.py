@@ -124,6 +124,15 @@ def process_document(input_file, output_root):
             print(f"  - 已生成元数据: {meta_file.name}")
         except Exception as meta_error:
             print(f"  - 元数据生成失败: {str(meta_error)}")
+        
+        # 从生成的Markdown文件中提取表格并生成JSON txt文件
+        try:
+            from core.utils import extract_tables_from_markdown_and_save_json
+            table_files = extract_tables_from_markdown_and_save_json(mkd_file_path, output_folder)
+            if table_files:
+                print(f"  - 已生成 {len(table_files)} 个表格文件")
+        except Exception as table_error:
+            print(f"  - 表格文件生成失败: {str(table_error)}")
                     
         print(f"完成处理: {file_path.name}")
         print(f"  - 耗时: {time.time()-start_time:.2f}秒")

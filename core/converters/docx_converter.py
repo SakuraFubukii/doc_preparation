@@ -54,6 +54,24 @@ def process_paragraph(para, pending_short_text):
 
 
 
+def save_table_as_json_txt(table_data, output_folder, table_index, file_base_name):
+    """保存表格数据为JSON格式的txt文件"""
+    output_folder = Path(output_folder)
+    
+    # 创建表格文件名
+    table_filename = f"{file_base_name}_table_{table_index + 1}.txt"
+    table_file_path = output_folder / table_filename
+    
+    # 保存表格数据为JSON格式
+    try:
+        with open(table_file_path, 'w', encoding='utf-8') as f:
+            json.dump(table_data, f, ensure_ascii=False, indent=2)
+        print(f"  - 已生成表格文件: {table_filename}")
+        return table_file_path
+    except Exception as e:
+        print(f"  - 保存表格文件失败: {str(e)}")
+        return None
+
 def convert_docx_to_markdown(docx_path, output_folder):
     """将Word文档转换为Markdown格式"""
     docx_path, output_folder = Path(docx_path), Path(output_folder)
@@ -96,7 +114,11 @@ def convert_docx_to_markdown(docx_path, output_folder):
             
             # 提取表格数据
             headers, data_rows = extract_table_data(table)
-            tables_data.append({"headers": headers, "data": data_rows})
+            table_data = {"headers": headers, "data": data_rows}
+            tables_data.append(table_data)
+            
+            # 为每个表格生成单独的JSON txt文件
+            save_table_as_json_txt(table_data, output_folder, len(tables_data) - 1, docx_path.stem)
     
     # 处理剩余的短文本
     if pending_short_text:
