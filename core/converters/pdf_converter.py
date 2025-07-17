@@ -12,6 +12,8 @@ import shutil
 import config
 import gc
 import atexit
+import tempfile
+import uuid
 
 # 全局变量存储pipeline实例
 _pipeline = None
@@ -48,6 +50,7 @@ def process_document(input_file, output_root):
     start_time = time.time()
     print(f"\n开始处理: {file_path.name}")
     output_folder = None
+    temp_file_path = None
     
     try:
         # 准备目录
@@ -64,8 +67,23 @@ def process_document(input_file, output_root):
         if pipeline is None:
             raise RuntimeError("OCR模型未能正确初始化")
 
+        # 处理中文路径问题：如果路径包含非ASCII字符，则复制到临时文件
+        processing_file_path = str(file_path)
+        try:
+            # 检查路径是否包含非ASCII字符
+            str(file_path).encode('ascii')
+        except UnicodeEncodeError:
+            # 路径包含中文或其他非ASCII字符，创建临时文件
+            print("  - 检测到中文路径，创建临时文件...")
+            temp_dir = tempfile.gettempdir()
+            temp_filename = f"temp_{uuid.uuid4().hex}{file_path.suffix}"
+            temp_file_path = Path(temp_dir) / temp_filename
+            shutil.copy2(file_path, temp_file_path)
+            processing_file_path = str(temp_file_path)
+            print(f"  - 临时文件: {temp_file_path}")
+
         # 处理文件
-        output = pipeline.predict(str(file_path))
+        output = pipeline.predict(processing_file_path)
         markdown_list = []
         markdown_images = []
 
@@ -120,6 +138,14 @@ def process_document(input_file, output_root):
             except Exception as clean_error:
                 print(f"清理输出目录失败: {str(clean_error)}")
         return False
+    finally:
+        # 清理临时文件
+        if temp_file_path and temp_file_path.exists():
+            try:
+                temp_file_path.unlink()
+                print("  - 已清理临时文件")
+            except Exception as temp_error:
+                print(f"  - 清理临时文件失败: {str(temp_error)}")
 
 def process_directory(input_root, output_root):
     """处理指定目录下的所有支持的文档（PDF及图片）"""
