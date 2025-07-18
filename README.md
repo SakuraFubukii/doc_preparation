@@ -1,138 +1,149 @@
-# 文档处理系统
+# Document Processing System
 
-一个基于Python的智能文档处理系统，支持Word文档(.docx/.doc)和PDF文档的自动处理，将其转换为Markdown格式并提取关键元数据。
+[English](README.md) | [中文](README_zh.md)
 
-## 功能特性
+An intelligent Python-based document processing system that supports automatic processing of Word documents (.docx/.doc) and PDF documents, converting them to Markdown format and extracting key metadata.
 
-- **多格式支持**: 支持Word文档(.docx/.doc)和PDF文档处理
-- **智能转换**: 自动将文档转换为结构化的Markdown格式
-- **元数据提取**: 自动生成文档摘要和关键词
-- **OCR处理**: 使用PaddleOCR对PDF文档进行高精度文字识别
-- **批量处理**: 支持目录下多个文档的批量处理
+## Features
 
-## 项目结构
+- **Multi-format Support**: Support for Word documents (.docx/.doc) and PDF document processing
+- **Intelligent Conversion**: Automatically convert documents to structured Markdown format
+- **Metadata Extraction**: Automatically generate document summaries and keywords
+- **OCR Processing**: High-precision text recognition for PDF documents using PaddleOCR
+- **Batch Processing**: Support for batch processing of multiple documents in a directory
 
-```
+## Project Structure
+
+```text
 doc_preparation/
-├── config.py              # 配置文件
-├── main.py                # 主程序入口
-├── requirements.txt       # 依赖包列表
-├── README.md              # 项目说明
-├── input/                 # 输入文档目录
-├── output/                # 处理结果输出目录
-├── models/                # 预训练模型缓存目录
-├── custom_models/         # 自定义OCR模型目录
-└── core/                  # 核心功能模块
+├── config.py              # Configuration file
+├── main.py                # Main program entry point
+├── requirements.txt       # Dependencies list
+├── README.md              # Project documentation (English)
+├── README_zh.md           # Project documentation (Chinese)
+├── input/                 # Input documents directory
+├── output/                # Processing results output directory
+├── models/                # Pre-trained models cache directory
+├── custom_models/         # Custom OCR models directory
+└── core/                  # Core functionality modules
     ├── __init__.py
-    ├── metadata_extractor.py  # 元数据提取模块
-    ├── utils.py               # 工具函数
-    └── converters/            # 文档转换器
+    ├── metadata_extractor.py  # Metadata extraction module
+    ├── utils.py               # Utility functions
+    └── converters/            # Document converters
         ├── __init__.py
-        ├── docx_converter.py  # Word文档转换器
-        └── pdf_converter.py   # PDF文档转换器
+        ├── docx_converter.py  # Word document converter
+        └── pdf_converter.py   # PDF document converter
 ```
 
-## 安装与配置
+## Installation and Configuration
 
-### 1. 安装依赖
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 配置参数
+### 2. Configure Parameters
 
-在 `config.py` 中根据需要调整配置参数：
+Adjust configuration parameters in `config.py` as needed:
 
 ```python
-# 基础目录配置
-INPUT_DIR = BASE_DIR / "input"    # 输入文档目录
-OUTPUT_DIR = BASE_DIR / "output"  # 输出目录
+# Basic directory configuration
+INPUT_DIR = BASE_DIR / "input"    # Input documents directory
+OUTPUT_DIR = BASE_DIR / "output"  # Output directory
 
-# 文档处理参数
-SUMMARY_SENTENCES = 3             # 摘要句子数量
-KEYWORDS_TOP_N = 10              # 关键词提取数量
+# Document processing parameters
+SUMMARY_SENTENCES = 3             # Number of summary sentences
+KEYWORDS_TOP_N = 10              # Number of keywords to extract
 
-# 模型配置
-USE_LOCAL_MODELS = True          # 是否使用本地模型
-USE_GPU_FOR_OCR = True          # 是否使用GPU进行OCR
+# Model configuration
+USE_LOCAL_MODELS = True          # Whether to use local models
+USE_GPU_FOR_OCR = True          # Whether to use GPU for OCR
 ```
 
-## 使用方法
+## Usage
 
-### 1. 准备文档
+### 1. Prepare Documents
 
-将需要处理的Word文档(.docx/.doc)或PDF文档放入 `input/` 目录。
+Place Word documents (.docx/.doc) or PDF documents to be processed in the `input/` directory.
 
-### 2. 运行处理程序
+### 2. Run Processing Program
 
 ```bash
 python main.py
 ```
 
-### 3. 查看结果
+### 3. View Results
 
-处理完成后，结果将保存在 `output/` 目录中：
+After processing is complete, results will be saved in the `output/` directory:
 
-- `文档名.md`: Markdown格式的文档内容
-- `文档名_metadata.json`: 提取的元数据（摘要、关键词等）
+- `document_name.md`: Document content in Markdown format
+- `document_name_metadata.json`: Extracted metadata (summary, keywords, etc.)
 
-## 输出示例
+## Output Examples
 
-### Markdown文件
-处理后的文档将转换为结构化的Markdown格式，保留原文档的层次结构、表格和图片。
+### Markdown Files
 
-### 元数据文件
+Processed documents will be converted to structured Markdown format, preserving the original document's hierarchy, tables, and images.
+
+### Metadata Files
+
 ```json
 {
-  "summary": "文档摘要内容...",
+  "summary": "Document summary content...",
   "keywords": [
-    ["关键词1", 0.85],
-    ["关键词2", 0.72],
+    ["keyword1", 0.85],
+    ["keyword2", 0.72],
     ...
   ],
   "char_count": 15632,
   "word_count": 2341,
-  "title": "文档标题",
-  "author": "作者",
+  "title": "Document Title",
+  "author": "Author",
   "created": "2025-01-01T00:00:00",
   "modified": "2025-01-02T00:00:00"
 }
 ```
 
-## 依赖说明
+## Dependencies
 
-- **python-docx**: Word文档处理
-- **paddleocr**: PDF文档OCR处理
-- **tqdm**: 进度条显示
-- **sumy**: 文本摘要生成
-- **keybert**: 基于BERT的关键词提取
-- **jieba**: 中文分词
-- **transformers**: Transformer模型库
+- **python-docx**: Word document processing
+- **paddleocr**: PDF document OCR processing
+- **tqdm**: Progress bar display
+- **sumy**: Text summarization
+- **keybert**: BERT-based keyword extraction
+- **jieba**: Chinese word segmentation
+- **transformers**: Transformer model library
 
-## 注意事项
+## Important Notes
 
-1. 首次运行时会自动下载所需的预训练模型
-2. PDF处理需要较大的计算资源，建议使用GPU加速
-3. 确保输入文档编码正确，避免乱码问题
-4. 大批量处理时建议分批进行，避免内存溢出
+1. Required pre-trained models will be automatically downloaded on first run
+2. PDF processing requires significant computational resources; GPU acceleration is recommended
+3. Ensure input documents have correct encoding to avoid garbled text
+4. For large batch processing, process in smaller batches to avoid memory overflow
 
-## 故障排除
+## Troubleshooting
 
-### 模型下载失败
-如果遇到模型下载问题，可以：
-1. 设置 `USE_LOCAL_MODELS = False` 允许在线下载
-2. 手动下载模型到 `models/` 目录
-3. 检查网络连接和代理设置
+### Model Download Failure
 
-### OCR处理失败
-如果PDF处理出现问题：
-1. 检查CUDA环境配置（GPU模式）
-2. 设置 `USE_GPU_FOR_OCR = False` 使用CPU模式
-3. 确保custom_models目录包含所需的OCR模型
+If you encounter model download issues:
 
-### 内存不足
-处理大文档时如遇内存问题：
-1. 减少批处理文档数量
-2. 降低图片分辨率
-3. 使用更大内存的机器
+1. Set `USE_LOCAL_MODELS = False` to allow online downloads
+2. Manually download models to the `models/` directory
+3. Check network connection and proxy settings
+
+### OCR Processing Failure
+
+If PDF processing encounters problems:
+
+1. Check CUDA environment configuration (GPU mode)
+2. Set `USE_GPU_FOR_OCR = False` to use CPU mode
+3. Ensure custom_models directory contains required OCR models
+
+### Memory Shortage
+
+If memory issues occur when processing large documents:
+
+1. Reduce the number of documents in batch processing
+2. Lower image resolution
+3. Use a machine with more memory
