@@ -13,7 +13,8 @@ import config
 from core.utils import (
     clean_markdown, extract_metadata, save_images,
     ensure_dir, is_temp_file, is_short_text,
-    combine_text_fragments, write_json_file
+    combine_text_fragments, write_json_file,
+    post_process_markdown_content
 )
 
 def extract_table_data(table):
@@ -128,7 +129,11 @@ def convert_docx_to_markdown(docx_path, output_folder):
     for img_path in save_images(doc, output_folder):
         md_lines.append(f"![图片]({img_path})\n\n")
     
-    return clean_markdown("".join(md_lines)), tables_data, metadata
+    # 应用完整的文本清洗和标准化处理
+    raw_markdown = "".join(md_lines)
+    cleaned_markdown = post_process_markdown_content(raw_markdown)
+    
+    return cleaned_markdown, tables_data, metadata
 
 def process_single_docx(input_path, output_folder):
     """处理单个Word文档"""

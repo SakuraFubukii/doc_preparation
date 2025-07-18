@@ -17,6 +17,223 @@ def clean_markdown(text):
     return text.strip()
 
 
+def clean_ocr_text(text):
+    """清洗和标准化OCR识别的文本
+    
+    适用于PDF OCR识别后的文本清洗，也可用于其他需要文本标准化的场景。
+    
+    Args:
+        text (str): 原始文本
+        
+    Returns:
+        str: 清洗后的文本
+    """
+    if not text or not text.strip():
+        return ""
+    
+    # 1. 基础清洗：移除多余空白字符
+    text = re.sub(r'\s+', ' ', text.strip())
+    
+    # 2. 修复常见OCR识别错误
+    # 修复数字和字母的常见错误
+    ocr_corrections = {
+        r'\b0\b': 'O',  # 数字0错识别为字母O的情况（在特定上下文中）
+        r'\bl\b': 'I',  # 小写l错识别为大写I
+        r'\b1\b(?=[a-zA-Z])': 'I',  # 数字1在字母前应该是I
+    }
+    
+    for pattern, replacement in ocr_corrections.items():
+        text = re.sub(pattern, replacement, text)
+    
+    # 3. 修复中文标点符号
+    chinese_punctuation_fixes = {
+        r'\s+，': '，',  # 中文逗号前后空格
+        r'，\s+': '，',
+        r'\s+。': '。',  # 中文句号前后空格
+        r'。\s+': '。',
+        r'\s+；': '；',  # 中文分号前后空格
+        r'；\s+': '；',
+        r'\s+：': '：',  # 中文冒号前后空格
+        r'：\s+': '：',
+        r'\s+！': '！',  # 中文感叹号前后空格
+        r'！\s+': '！',
+        r'\s+？': '？',  # 中文问号前后空格
+        r'？\s+': '？',
+        r'"\s+': '"',   # 中文引号处理
+        r'\s+"': '"',
+    }
+    
+    for pattern, replacement in chinese_punctuation_fixes.items():
+        text = re.sub(pattern, replacement, text)
+    
+    # 4. 处理数字和单位之间的空格
+    text = re.sub(r'(\d+)\s+([%°℃℉])', r'\1\2', text)  # 移除数字和单位符号间的空格
+    text = re.sub(r'(\d+)\s+(万|千|百|十|亿|元|米|公里|公斤|吨)', r'\1\2', text)  # 中文数量单位
+    
+    return text.strip()
+
+
+def clean_table_line(table_line):
+    """清洗表格行
+    
+    Args:
+        table_line (str): 表格行文本
+        
+    Returns:
+        str: 清洗后的表格行
+    """
+    if not table_line or not table_line.strip():
+        return ""
+    
+    # 分割表格单元格
+    cells = table_line.split('|')[1:-1]  # 去掉首尾的空字符串
+    
+    # 清洗每个单元格
+    cleaned_cells = []
+    for cell in cells:
+        cleaned_cell = clean_ocr_text(cell.strip())
+        cleaned_cells.append(cleaned_cell)
+    
+    # 重新组装表格行
+    if any(cell.strip() for cell in cleaned_cells):  # 确保至少有一个非空单元格
+        return '| ' + ' | '.join(cleaned_cells) + ' |'
+    
+    return ""
+
+
+def normalize_markdown_structure(markdown_text):
+    """标准化Markdown文档结构
+    
+    适用于PDF OCR和Word转换后的Markdown文本结构化处理。
+    
+    Args:
+        markdown_text (str): 原始Markdown文本
+        
+    Returns:
+        str: 标准化后的Markdown文本
+    """
+    if not markdown_text:
+        return ""
+    
+    lines = markdown_text.split('\n')
+    processed_lines = []
+    current_paragraph = []
+    
+    for line in lines:
+        line = line.strip()
+        
+        # 处理标题行
+        if line.startswith('#'):
+            # 先保存当前段落
+            if current_paragraph:
+                combined_text = combine_text_fragments(current_paragraph)
+                if combined_text:
+                    processed_lines.append(combined_text)
+                current_paragraph = []
+            
+            # 添加标题，确保标题格式正确
+            level = len(line) - len(line.lstrip('#'))
+            title_text = line.lstrip('#').strip()
+            if title_text:
+                processed_lines.append(f"{'#' * min(level, 6)} {title_text}")
+            continue
+        
+        # 处理表格行
+        if line.startswith('|') and line.endswith('|'):
+            # 先保存当前段落
+            if current_paragraph:
+                combined_text = combine_text_fragments(current_paragraph)
+                if combined_text:
+                    processed_lines.append(combined_text)
+                current_paragraph = []
+            
+            # 清洗表格行
+            cleaned_table_line = clean_table_line(line)
+            if cleaned_table_line:
+                processed_lines.append(cleaned_table_line)
+            continue
+        
+        # 处理列表项
+        if re.match(r'^[-*+]\s+|^\d+\.\s+', line):
+            # 先保存当前段落
+            if current_paragraph:
+                combined_text = combine_text_fragments(current_paragraph)
+                if combined_text:
+                    processed_lines.append(combined_text)
+                current_paragraph = []
+            
+            processed_lines.append(line)
+            continue
+        
+        # 处理空行
+        if not line:
+            if current_paragraph:
+                combined_text = combine_text_fragments(current_paragraph)
+                if combined_text:
+                    processed_lines.append(combined_text)
+                current_paragraph = []
+            continue
+        
+        # 累积普通文本行
+        cleaned_line = clean_ocr_text(line)
+        if cleaned_line:
+            current_paragraph.append(cleaned_line)
+    
+    # 处理最后的段落
+    if current_paragraph:
+        combined_text = combine_text_fragments(current_paragraph)
+        if combined_text:
+            processed_lines.append(combined_text)
+    
+    # 组装最终文本，确保适当的行间距
+    result_lines = []
+    for i, line in enumerate(processed_lines):
+        result_lines.append(line)
+        
+        # 在标题、段落、表格、列表之间添加适当的空行
+        if i < len(processed_lines) - 1:
+            next_line = processed_lines[i + 1]
+            if (line.startswith('#') or 
+                next_line.startswith('#') or 
+                next_line.startswith('|') or 
+                re.match(r'^[-*+]\s+|^\d+\.\s+', next_line)):
+                result_lines.append('')
+    
+    return '\n'.join(result_lines)
+
+
+def post_process_markdown_content(markdown_content):
+    """对转换后的Markdown内容进行完整的后处理
+    
+    综合应用所有清洗和标准化功能，适用于PDF和Word转换后的文本。
+    
+    Args:
+        markdown_content (str): 原始Markdown内容
+        
+    Returns:
+        str: 处理后的Markdown内容
+    """
+    # 1. 标准化结构
+    markdown_content = normalize_markdown_structure(markdown_content)
+    
+    # 2. 应用基础清洗
+    markdown_content = clean_markdown(markdown_content)
+    
+    # 3. 最终整理：确保文档结构清晰
+    lines = markdown_content.split('\n')
+    final_lines = []
+    
+    for i, line in enumerate(lines):
+        if line.strip():
+            final_lines.append(line)
+        elif i > 0 and i < len(lines) - 1:
+            # 保留必要的空行，但避免连续多个空行
+            if final_lines and final_lines[-1].strip():
+                final_lines.append('')
+    
+    return '\n'.join(final_lines).strip()
+
+
 def extract_metadata(doc):
     """提取文档元数据"""
     cp = doc.core_properties

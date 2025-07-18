@@ -6,6 +6,7 @@ PDF文档转换器模块
 
 import time
 import json
+import re
 from pathlib import Path
 import os
 import shutil
@@ -14,6 +15,14 @@ import gc
 import atexit
 import tempfile
 import uuid
+from core.utils import (
+    clean_markdown, 
+    combine_text_fragments,
+    clean_ocr_text,
+    clean_table_line,
+    normalize_markdown_structure,
+    post_process_markdown_content
+)
 
 # 全局变量存储pipeline实例
 _pipeline = None
@@ -93,11 +102,15 @@ def process_document(input_file, output_root):
             markdown_images.append(md_info.get("markdown_images", {}))
     
         markdown_texts = pipeline.concatenate_markdown_pages(markdown_list)
+        
+        # 应用文本清洗和标准化处理
+        print("  - 正在清洗和标准化文本...")
+        cleaned_markdown = post_process_markdown_content(markdown_texts)
 
         # 保存输出
         mkd_file_path = output_folder / f"{file_path.stem}.md"
         with open(mkd_file_path, "w", encoding="utf-8") as f:
-            f.write(markdown_texts)
+            f.write(cleaned_markdown)
 
         # 保存图片
         for item in markdown_images:
@@ -114,8 +127,8 @@ def process_document(input_file, output_root):
                 summary_sentences=config.SUMMARY_SENTENCES,
                 keywords_count=config.KEYWORDS_TOP_N
             )
-            markdown_content = mkd_file_path.read_text(encoding='utf-8')
-            content_meta = extractor.extract(markdown_content)
+            # 使用清洗后的文本进行元数据提取
+            content_meta = extractor.extract(cleaned_markdown)
             
             meta_file = output_folder / f"{file_path.stem}_metadata.json"
             with open(meta_file, 'w', encoding='utf-8') as f:

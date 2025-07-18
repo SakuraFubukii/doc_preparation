@@ -64,29 +64,32 @@ def process_file(file_path, output_dir):
             save_results(markdown, {**metadata, **content_meta}, output_file)
             
         elif file_path_str.endswith('.pdf'):
-            # PDF文档处理
+            # PDF文档处理（现在包含清洗和标准化）
             converter = PdfConverter()
             ensure_dir(output_subdir)
-            markdown = converter.convert(file_path, output_subdir)
+            markdown, pdf_metadata = converter.convert(file_path, output_subdir)
             
-            # 查找markdown文件
-            md_file = output_subdir / f"{file_name}.md"
-            if md_file.exists():
-                try:
-                    markdown = md_file.read_text(encoding='utf-8')
-                    extractor = MetadataExtractor(
-                        summary_sentences=config.SUMMARY_SENTENCES,
-                        keywords_count=config.KEYWORDS_TOP_N
-                    )
-                    content_meta = extractor.extract(markdown)
-                    
-                    # 保存元数据 (PDF转换器已经处理了元数据生成)
-                    print(f"已成功处理PDF: {file_name}")
-                except Exception as e:
-                    print(f"处理PDF元数据失败: {str(e)}")
-                    return False
+            # PDF转换器已经处理了清洗、标准化和元数据提取
+            if markdown and markdown.strip():
+                print(f"已成功处理PDF: {file_name}")
+                # 如果需要额外的内容特征提取，可以在这里添加
+                if not pdf_metadata:
+                    # 如果PDF转换器没有生成元数据，则手动提取
+                    try:
+                        extractor = MetadataExtractor(
+                            summary_sentences=config.SUMMARY_SENTENCES,
+                            keywords_count=config.KEYWORDS_TOP_N
+                        )
+                        content_meta = extractor.extract(markdown)
+                        
+                        # 保存元数据
+                        output_file = output_subdir / file_name
+                        save_results(markdown, content_meta, output_file)
+                    except Exception as e:
+                        print(f"处理PDF元数据失败: {str(e)}")
+                        return False
             else:
-                print(f"警告: PDF转换失败，Markdown文件未生成: {md_file}")
+                print(f"警告: PDF转换失败或生成空内容: {file_name}")
                 return False
         else:
             print(f"不支持的文件类型: {file_path}")

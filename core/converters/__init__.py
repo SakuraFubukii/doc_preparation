@@ -61,7 +61,7 @@ class PdfConverter:
         if self.pipeline is None:
             error_msg = "PDF处理模型未加载，无法转换PDF文件"
             print(f"错误: {error_msg}")
-            return f"# {input_file.stem}\n\n{error_msg}\n"
+            return f"# {input_file.stem}\n\n{error_msg}\n", {}
         
         try:
             from .pdf_converter import process_document
@@ -69,9 +69,27 @@ class PdfConverter:
             
             if success:
                 md_file = output_dir / f"{input_file.stem}.md"
-                return md_file.read_text(encoding='utf-8') if md_file.exists() else f"# {input_file.stem}\n\nPDF处理成功但未生成Markdown文件\n"
+                metadata_file = output_dir / f"{input_file.stem}_metadata.json"
+                
+                # 读取生成的Markdown文件
+                if md_file.exists():
+                    markdown_content = md_file.read_text(encoding='utf-8')
+                else:
+                    markdown_content = f"# {input_file.stem}\n\nPDF处理成功但未生成Markdown文件\n"
+                
+                # 读取元数据文件
+                metadata = {}
+                if metadata_file.exists():
+                    try:
+                        import json
+                        with open(metadata_file, 'r', encoding='utf-8') as f:
+                            metadata = json.load(f)
+                    except Exception as e:
+                        print(f"读取元数据文件失败: {str(e)}")
+                
+                return markdown_content, metadata
             else:
-                return f"# {input_file.stem}\n\nPDF处理失败\n"
+                return f"# {input_file.stem}\n\nPDF处理失败\n", {}
         except Exception as e:
             print(f"PDF转换出错: {str(e)}")
-            return f"# {input_file.stem}\n\nPDF转换出错: {str(e)}\n"
+            return f"# {input_file.stem}\n\nPDF转换出错: {str(e)}\n", {}
