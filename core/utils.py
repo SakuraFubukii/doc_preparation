@@ -21,6 +21,7 @@ def clean_ocr_text(text):
     """清洗和标准化OCR识别的文本
     
     适用于PDF OCR识别后的文本清洗，也可用于其他需要文本标准化的场景。
+    注意：不包含OCR错误修复功能，避免误改正确内容。
     
     Args:
         text (str): 原始文本
@@ -34,18 +35,7 @@ def clean_ocr_text(text):
     # 1. 基础清洗：移除多余空白字符
     text = re.sub(r'\s+', ' ', text.strip())
     
-    # 2. 修复常见OCR识别错误
-    # 修复数字和字母的常见错误
-    ocr_corrections = {
-        r'\b0\b': 'O',  # 数字0错识别为字母O的情况（在特定上下文中）
-        r'\bl\b': 'I',  # 小写l错识别为大写I
-        r'\b1\b(?=[a-zA-Z])': 'I',  # 数字1在字母前应该是I
-    }
-    
-    for pattern, replacement in ocr_corrections.items():
-        text = re.sub(pattern, replacement, text)
-    
-    # 3. 修复中文标点符号
+    # 2. 修复中文标点符号
     chinese_punctuation_fixes = {
         r'\s+，': '，',  # 中文逗号前后空格
         r'，\s+': '，',
@@ -66,7 +56,7 @@ def clean_ocr_text(text):
     for pattern, replacement in chinese_punctuation_fixes.items():
         text = re.sub(pattern, replacement, text)
     
-    # 4. 处理数字和单位之间的空格
+    # 3. 处理数字和单位之间的空格
     text = re.sub(r'(\d+)\s+([%°℃℉])', r'\1\2', text)  # 移除数字和单位符号间的空格
     text = re.sub(r'(\d+)\s+(万|千|百|十|亿|元|米|公里|公斤|吨)', r'\1\2', text)  # 中文数量单位
     
